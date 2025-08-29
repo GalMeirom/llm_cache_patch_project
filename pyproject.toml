@@ -1,0 +1,17 @@
+[project]
+name = "llm_cache_patch_project"
+version = "0.1.0"
+description = "Install-then-patch GPTCache with SLRU, TinyLFU+SLRU, GDSR"
+requires-python = ">=3.10"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+select = ["E","F","I","UP","B"]
+exclude = ["artifacts","overlays"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
