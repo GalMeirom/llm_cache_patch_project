@@ -10,5 +10,3 @@ pip install -r requirements.txt
 pre-commit install
 
 Minor: validate CI pipeline.
-
-Seed CI on main target.
