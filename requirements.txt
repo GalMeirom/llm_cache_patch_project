@@ -1,4 +1,4 @@
-gptcache==<PIN_ME>
+# gptcache==<PIN_ME>
 pytest
 ruff
 black
