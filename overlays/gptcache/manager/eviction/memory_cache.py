@@ -1,8 +1,10 @@
 from typing import Any, Callable, List
 
 import cachetools
-from .policies.slru import SLRUCache
 from gptcache.manager.eviction.base import EvictionBase
+
+from .policies.slru import SLRUCache
+from .policies.tinylfu_slru import TinyLFUSLRUCache
 
 
 def popitem_wrapper(func, wrapper_func, clean_size):
@@ -51,6 +53,8 @@ class MemoryCacheEviction(EvictionBase):
             self._cache = cachetools.RRCache(maxsize=maxsize, **kwargs)
         elif self._policy == "SLRU":
             self._cache = SLRUCache(maxsize=maxsize, **kwargs)
+        elif self._policy == "TLFU_SLRU":  # or your chosen name
+            self._cache = TinyLFUSLRUCache(maxsize=maxsize, **kwargs)
         else:
             raise ValueError(f"Unknown policy {policy}")
 
