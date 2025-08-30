@@ -1,0 +1,18 @@
+{
+  "applied_at": "20250830T100656Z",
+  "purelib": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\.venv\\Lib\\site-packages",
+  "gptcache_root": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\.venv\\Lib\\site-packages\\gptcache",
+  "backup_dir": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\artifacts\\overlays\\backups\\20250830T100656Z",
+  "files": [
+    {
+      "dest": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\.venv\\Lib\\site-packages\\gptcache\\_llm_patch_probe.py",
+      "action": "created"
+    },
+    {
+      "dest": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\.venv\\Lib\\site-packages\\gptcache\\__init__.py",
+      "action": "modified",
+      "backed_up_to": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\artifacts\\overlays\\backups\\20250830T100656Z\\gptcache\\__init__.py",
+      "sha256_before": "8e1bbaf0f6ca5a930f5563dac34ff6470fb06aaca4e45728b8c088ff1baefd24"
+    }
+  ]
+}
