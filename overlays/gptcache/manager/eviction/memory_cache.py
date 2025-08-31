@@ -5,6 +5,7 @@ from gptcache.manager.eviction.base import EvictionBase
 
 from .policies.slru import SLRUCache
 from .policies.tinylfu_slru import TinyLFUSLRUCache
+from .policies.gdsf import GDSFCache
 
 
 def popitem_wrapper(func, wrapper_func, clean_size):
@@ -55,6 +56,8 @@ class MemoryCacheEviction(EvictionBase):
             self._cache = SLRUCache(maxsize=maxsize, **kwargs)
         elif self._policy == "TLFU_SLRU":
             self._cache = TinyLFUSLRUCache(maxsize=maxsize, **kwargs)
+        elif self._policy == "GDSF":
+            self._cache = GDSFCache(maxsize=maxsize, **kwargs)
         else:
             raise ValueError(f"Unknown policy {policy}")
 
