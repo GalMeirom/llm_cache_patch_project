@@ -3,3 +3,5 @@ pytest
 ruff
 black
 pre-commit
+onnxruntime
+hnswlib
