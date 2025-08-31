@@ -53,7 +53,7 @@ class MemoryCacheEviction(EvictionBase):
             self._cache = cachetools.RRCache(maxsize=maxsize, **kwargs)
         elif self._policy == "SLRU":
             self._cache = SLRUCache(maxsize=maxsize, **kwargs)
-        elif self._policy == "TLFU_SLRU":  # or your chosen name
+        elif self._policy == "TLFU_SLRU":
             self._cache = TinyLFUSLRUCache(maxsize=maxsize, **kwargs)
         else:
             raise ValueError(f"Unknown policy {policy}")
