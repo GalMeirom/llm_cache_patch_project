@@ -5,3 +5,4 @@ black
 pre-commit
 onnxruntime
 hnswlib
+Faker
