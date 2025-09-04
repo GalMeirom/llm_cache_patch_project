@@ -6,3 +6,5 @@ pre-commit
 onnxruntime
 hnswlib
 Faker
+matplotlib==3.10.6
+langchain-0.3.27
