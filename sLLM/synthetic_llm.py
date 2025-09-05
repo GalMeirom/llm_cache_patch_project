@@ -14,8 +14,9 @@ class SyntheticLLM(LLM):
     same response, but different prompts will generate different responses.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, buffer=0.1, **kwargs):
         super().__init__(**kwargs)
+        self.buffer = buffer
 
     @property
     def _llm_type(self) -> str:
@@ -40,6 +41,10 @@ class SyntheticLLM(LLM):
 
     def _generate_five_words(self, seed: int) -> str:
         """Generate exactly 5 words using Faker with the given seed."""
+        import time
+
+        time.sleep(getattr(self, "buffer", 0))
+
         fake = Faker()
         fake.seed_instance(seed)
 
