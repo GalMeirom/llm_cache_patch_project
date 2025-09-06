@@ -4,6 +4,7 @@ from typing import Any
 from faker import Faker
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms.base import LLM
+from pydantic import Field
 
 
 class SyntheticLLM(LLM):
@@ -14,9 +15,10 @@ class SyntheticLLM(LLM):
     same response, but different prompts will generate different responses.
     """
 
+    buffer: float = Field(default=0.1, description="Sleep time before generating output")
+
     def __init__(self, buffer=0.1, **kwargs):
         super().__init__(**kwargs)
-        self.buffer = buffer
 
     @property
     def _llm_type(self) -> str:
@@ -111,26 +113,3 @@ class SyntheticLLM(LLM):
             run_manager.on_text(f"Generated response: {response}")
 
         return response
-
-
-# Example usage
-if __name__ == "__main__":
-    # Create an instance of the synthetic LLM
-    llm = SyntheticLLM()
-
-    # Test with different prompts
-    test_prompts = [
-        "Hello world",
-        "What is the weather like today?",
-        "Tell me about artificial intelligence",
-        "Hello world",  # Same as first to show deterministic behavior
-    ]
-
-    print("Testing SyntheticLLM:")
-    print("-" * 50)
-
-    for prompt in test_prompts:
-        response = llm.invoke(prompt)
-        print(f"Prompt: {prompt}")
-        print(f"Response: {response}")
-        print("-" * 50)

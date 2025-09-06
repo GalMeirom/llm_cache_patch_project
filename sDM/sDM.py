@@ -69,28 +69,6 @@ def _xor_bytes(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % klen] for i, b in enumerate(data))
 
 
-def _on_evict(self, marked_keys):
-    """EvictionBase callback: delete local state for the evicted key(s)."""
-    if marked_keys is None:
-        return
-
-    # accept single key or iterable of keys
-    try:
-        keys = (
-            list(marked_keys)
-            if not isinstance(marked_keys, int | np.integer)
-            else [int(marked_keys)]
-        )
-    except TypeError:
-        keys = [marked_keys]
-
-    for k in keys:
-        self._scalar.pop(k, None)
-        self._vectors.pop(k, None)
-        self._sessions.pop(k, None)
-        self._session_meta.pop(k, None)
-
-
 @dataclass
 class _SessionRecord:
     """Lightweight record to mirror session linkage similar to SSDataManager."""
@@ -160,7 +138,7 @@ class sDataManager(DataManager):
         # 2) Local, in-memory stores
         self._next_id: int = 1
         self._scalar: dict[int, CacheData] = {}  # id -> encrypted-at-rest CacheData
-        self._vectors: dict[int, np.ndarray] = {}  # id -> normalized float32 vector
+        self._vectors: dict[int, str] = {}  # id -> prompt string
         self.eviction_manager = sEvictionManager(self._scalar, self._vectors)
         self._sessions: dict[int, set[str]] = {}  # id -> set(session_id)
         self._session_meta: dict[int, list[_SessionRecord]] = {}  # id -> session records
@@ -310,16 +288,19 @@ class sDataManager(DataManager):
         ids = self._alloc_ids(len(questions))
 
         for i, id_ in enumerate(ids):
-            vec = _normalize(np.asarray(embedding_datas[i], dtype=np.float32))
+            emb = embedding_datas[i]
+            if not isinstance(emb, str):
+                raise ParamError(f"embedding_data must be str (got {type(emb)})")
+
             q_enc = self._maybe_enc_question(questions[i])
             a_enc = self._maybe_enc_answers(answers[i])
 
             # Persist in-memory
-            self._vectors[id_] = vec
+            self._vectors[id_] = emb
             self._scalar[id_] = CacheData(
                 question=q_enc,  # bytes (encrypted) or Question
                 answers=a_enc,  # bytes / Answer / list (encrypted when STR)
-                embedding_data=vec,  # normalized float32
+                embedding_data=emb,  # normalized float32
                 session_id=session_ids[i],  # optional
             )
 
@@ -422,22 +403,10 @@ class sDataManager(DataManager):
         if not self._vectors:
             return []
 
-        top_k = kwargs.get("top_k", -1)
-        q = _normalize(np.asarray(embedding_data, dtype=np.float32))
-
-        # Build an array of ids and a matrix of vectors in the same order
-        ids = np.fromiter(self._vectors.keys(), dtype=np.int64)
-        if ids.size == 0:
-            return []
-
-        mat = np.stack([self._vectors[int(i)] for i in ids], axis=0)  # (N, D)
-        scores = mat @ q  # cosine similarity because both sides are normalized
-
-        order = np.argsort(scores)[::-1]
-        if isinstance(top_k, int) and top_k > 0:
-            order = order[:top_k]
-
-        return [[float(scores[i]), int(ids[i])] for i in order]
+        matches = [[1.0, k] for k, s in self._vectors.items() if s == embedding_data]
+        # deterministic order by id
+        matches.sort(key=lambda x: x[1])
+        return matches
 
     def flush(self):
         """

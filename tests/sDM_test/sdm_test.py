@@ -38,8 +38,8 @@ def test_import_and_search_basic():
     """Save two items, search by vector, ensure top hit and decrypted fields are correct."""
     dm = sDataManager(max_size=10, policy="LRU")
 
-    q1, a1, v1 = "what is A?", "answer A", _vec(1)
-    q2, a2, v2 = "what is B?", "answer B", _vec(2)
+    q1, a1, v1 = "what is A?", "answer A", "what is A?"
+    q2, a2, v2 = "what is B?", "answer B", "what is B?"
 
     dm.import_data([q1, q2], [a1, a2], [v1, v2], [None, None])
 
@@ -57,7 +57,7 @@ def test_import_and_search_basic():
 def test_encryption_at_rest():
     """Verify strings are not stored in clear text inside the in-memory store."""
     dm = sDataManager(enc_key=b"k")
-    q, a, v = "secret question", "secret answer", _vec(3)
+    q, a, v = "secret question", "secret answer", "secret question"
     dm.import_data([q], [a], [v], [None])
 
     id_ = next(iter(dm._scalar.keys()))
@@ -73,7 +73,7 @@ def test_encryption_at_rest():
 def test_session_gate_allows_and_blocks():
     """With a session provided: allowed if names match, blocked otherwise."""
     dm = sDataManager()
-    q, a, v = "sessioned Q", "sessioned A", _vec(4)
+    q, a, v = "sessioned Q", "sessioned A", "sessioned Q"
     dm.import_data([q], [a], [v], ["S1"])
 
     res = dm.search(v, top_k=1)
@@ -92,8 +92,8 @@ def test_session_gate_allows_and_blocks():
 def test_hit_cache_callback_and_eviction_callback():
     """Touching an id should not error; eviction callback should remove data."""
     dm = sDataManager(max_size=2, clean_size=1)
-    q1, a1, v1 = "Q1", "A1", _vec(5)
-    q2, a2, v2 = "Q2", "A2", _vec(6)
+    q1, a1, v1 = "Q1", "A1", "Q1"
+    q2, a2, v2 = "Q2", "A2", "Q2"
     dm.import_data([q1, q2], [a1, a2], [v1, v2], [None, None])
 
     r1 = dm.search(v1, top_k=1)[0]
@@ -101,7 +101,7 @@ def test_hit_cache_callback_and_eviction_callback():
 
     r2 = dm.search(v2, top_k=1)[0]
     id2 = r2[1]
-    q3, a3, v3 = "Q3", "A3", _vec(7)
+    q3, a3, v3 = "Q3", "A3", "Q3"
     dm.save(q3, a3, v3)  # should evict id2
 
     assert dm.get_scalar_data(r2) is None
@@ -112,7 +112,7 @@ def test_add_list_delete_sessions():
     """Add a session to an id, list by session and by key,
     then delete session and auto-GC if last."""
     dm = sDataManager()
-    q, a, v = "Q", "A", _vec(7)
+    q, a, v = "Q", "A", "Q"
     dm.import_data([q], [a], [v], [None])
 
     res = dm.search(v, top_k=1)
@@ -147,7 +147,7 @@ def test_cache_with_sdm_integration():
 
     from sLLM.synthetic_llm import SyntheticLLM  # type: ignore
 
-    dm = sDataManager(max_size=2, policy="LRU")
+    dm = sDataManager(max_size=2, policy="LRU", clean_size=1)
     cache = Cache()
     cache.init(pre_embedding_func=get_prompt, data_manager=dm)
     llm = LangChainLLMs(llm=SyntheticLLM())
@@ -163,6 +163,3 @@ def test_cache_with_sdm_integration():
         cache.data_manager._eviction._cache.__getitem__(2)
     except KeyError as e:
         assert e.args == (2,)
-
-
-test_cache_with_sdm_integration()
