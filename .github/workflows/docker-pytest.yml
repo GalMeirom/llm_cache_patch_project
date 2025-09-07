@@ -1,0 +1,11 @@
+name: docker-pytest
+on: [push, workflow_dispatch]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t gptcache-bench .
+      - name: Run tests in container
+        run: docker run --rm gptcache-bench pytest -q
