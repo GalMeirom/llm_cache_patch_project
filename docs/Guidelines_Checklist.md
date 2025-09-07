@@ -1,9 +1,0 @@
-- [ ] Independent repo & reproducibility
-- [ ] Pinned GPTCache version
-- [ ] Install-then-patch scripts + rollback
-- [ ] New policies: SLRU, TinyLFU+SLRU, GDSR
-- [ ] Tests: unit + smoke + reset semantics
-- [ ] Benchmarks: CSV + plots + RESULTS.md
-- [ ] Docs: README, POLICIES.md, BENCHMARKS.md
-- [ ] Report (4–6 pages) & Slides (10–12)
-- [ ] Demo video & submission package

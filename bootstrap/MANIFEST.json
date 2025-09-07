@@ -1,0 +1,14 @@
+{
+  "gptcache_root": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\.venv\\Lib\\site-packages\\gptcache",
+  "ops": [
+    {
+      "kind": "restore_file",
+      "dest": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\.venv\\Lib\\site-packages\\gptcache\\manager\\eviction\\memory_cache.py",
+      "backup": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\bootstrap\\artifacts\\overlays\\memory_cache.py.backup-20250906-141216"
+    },
+    {
+      "kind": "remove_dir",
+      "path": "G:\\My Drive\\University\\BGU\\Second Degree\\Year 1 Semester B\\LLM Cache\\llm_cache_patch_project\\.venv\\Lib\\site-packages\\gptcache\\manager\\eviction\\policies"
+    }
+  ]
+}
