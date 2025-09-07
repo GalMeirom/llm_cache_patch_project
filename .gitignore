@@ -5,3 +5,4 @@ artifacts/
 *.egg-info/
 dist/
 .env
+.vscode/

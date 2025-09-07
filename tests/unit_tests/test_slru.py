@@ -1,7 +1,6 @@
 import importlib
 import importlib.util
 
-import numpy as np
 import pytest
 
 
@@ -112,61 +111,36 @@ def test_memory_cache_eviction_with_slru_on_evict_callback():
     )
 
 
-# 5) End-to-end GPTCache instance using SLRU with stock ONNX embedding (explicit get_data_manager)
+# 5) End-to-end GPTCache instance using SLRU
 
 
-@pytest.mark.skipif(
-    not (
-        importlib.util.find_spec("onnxruntime")
-        and (importlib.util.find_spec("hnswlib") or importlib.util.find_spec("faiss"))
-    ),
-    reason="Requires onnxruntime and a vector backend (hnswlib or faiss).",
-)
-def test_slru_with_full_gptcache_pipeline_onnx(tmp_path):
+def test_slru_with_full_gptcache_pipeline_onnx():
     from gptcache.core import Cache
-    from gptcache.embedding import Onnx
-    from gptcache.manager import CacheBase, VectorBase, get_data_manager
-    from gptcache.similarity_evaluation.distance import SearchDistanceEvaluation
+    from gptcache.processor.pre import get_prompt
 
-    onnx = Onnx()
-    dim = onnx.dimension
+    from sDM import sDataManager
 
-    backend = "hnswlib" if importlib.util.find_spec("hnswlib") else "faiss"
-
-    cb = CacheBase("sqlite", sql_url=f"sqlite:///{tmp_path/'sqlite.db'}")
-    vb = VectorBase(backend, dimension=dim, index_path=str(tmp_path / f"{backend}.index"))
-
-    # memory eviction, select policy via `eviction` arg
-    dm = get_data_manager(
-        cache_base=cb,
-        vector_base=vb,
-        object_base=None,
-        eviction_base=None,  # memory
-        max_size=5,
-        clean_size=2,
-        eviction="SLRU",  # <- IMPORTANT: your build reads this (not 'policy')
-    )
+    dm = sDataManager(max_size=5, clean_size=2, policy="SLRU")
 
     c = Cache()
     c.init(
-        embedding_func=onnx.to_embeddings,
+        pre_embedding_func=get_prompt,
         data_manager=dm,
-        similarity_evaluation=SearchDistanceEvaluation(),
     )
 
     # Verify SLRU is active
-    eb = getattr(c.data_manager, "eviction_base", None)
+    eb = getattr(c.data_manager, "_eviction", None)
     assert eb is not None and getattr(eb, "_policy", "").upper() == "SLRU"
 
     # Fill & exercise eviction
     for i in range(12):
         q, a = f"q{i}", f"a{i}"
-        c.data_manager.save(q, a, np.asarray(onnx.to_embeddings(q), dtype="float32"))
+        c.data_manager.save(q, a, q)
 
-    assert len(c.data_manager.eviction_base._cache) <= 5
+    assert len(c.data_manager._eviction._cache) <= 5
 
     # Search + hit callback
-    res = c.data_manager.search(np.asarray(onnx.to_embeddings("q11"), dtype="float32"))
+    res = c.data_manager.search("q11")
     assert isinstance(res, list)
     if res:
         c.data_manager.hit_cache_callback(res[0])

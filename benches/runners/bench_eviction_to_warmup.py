@@ -1,28 +1,11 @@
 # bench_eviction.py
 """
-Runs eviction benchmarks and records metrics.
-- Uses your existing parse_flags() and write_dicts_to_csv().
-- Policies run via MemoryCacheEviction.
-- Prompts come from text_payloads.py + generators.py.
-- Per configuration, call run_bench(...).
-- For comma-separated flag values, runs the cartesian product.
-
-Flags (examples):
-  --policy LRU,LFU           # eviction policy/policies (default LRU)
-  --maxsize 1000,5000        # cache sizes
-  --clean_size 0             # optional clean size hint
-  --miss_lag_s 0.1           # miss latency (seconds)
-  --bench_type 1             # 1=short, 2=novel, 3=mixed
-  --total_keys 1000          # size of key universe
-  --unique_ratio 0.1         # 0..1; chance a request is new
-  --theta 1.2                # Zipf theta (mixed bench)
-  --count 1000               # total requests
-  --seed 0                   # RNG seed for streams
-  --csv_out results.csv      # optional CSV output (appends)
+Runs eviction benchmarks and records metrics. (Warm-up per-request capable)
 """
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import statistics
@@ -32,14 +15,11 @@ from typing import Any
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-# === your utilities ===
 from gptcache.manager.eviction.memory_cache import MemoryCacheEviction
 
 import benches.utils.utils as utils
 from benches.utils.flags_to_dict import parse_flags
 from benches.utils.write_csv import write_dicts_to_csv
-
-# ---------------- core bench ----------------
 
 
 def run_bench(
@@ -48,18 +28,16 @@ def run_bench(
     maxsize: int = 1000,
     clean_size: int = 1,
     miss_lag_s: float = 0.1,
-    bench_type: int = "mix",
+    bench_type: str = "mixed",
     total_keys: int = 1000,
     unique_ratio: float = 0.1,
     theta: float = 1.2,
     count: int = 1000,
     seed: int = 0,
+    per_writer: csv.writer | None = None,
 ) -> dict[str, Any]:
-    """
-    Single configuration run:
-      - Key = prompt text (as-is).
-      - Hit: no wait. Miss: sleep(miss_lag_s) then evict-base.put([key]).
-    """
+    """Single configuration run; if per_writer is set,
+    write per-request rows: idx,policy,hit,lat_ms."""
     ev = MemoryCacheEviction(
         policy=policy, maxsize=maxsize, clean_size=clean_size, on_evict=lambda ids: None
     )
@@ -76,22 +54,27 @@ def run_bench(
     hits = 0
 
     t0 = time.perf_counter()
-    for _i, p in enumerate(prompts):
-
+    for idx, p in enumerate(prompts):
         ts = time.perf_counter()
         if ev.get(p):
+            is_hit = 1
             hits += 1
         else:
+            is_hit = 0
             time.sleep(float(miss_lag_s))
             ev.put([p])
         te = time.perf_counter()
 
-        lat_ms.append((te - ts) * 1000.0)
-    t1 = time.perf_counter()
+        lat = (te - ts) * 1000.0
+        lat_ms.append(lat)
 
+        if per_writer is not None:
+            per_writer.writerow([idx, policy, is_hit, float(lat)])
+
+    t1 = time.perf_counter()
     dur = max(t1 - t0, 1e-9)
+
     return {
-        # params snapshot
         "policy": policy,
         "maxsize": maxsize,
         "clean_size": clean_size,
@@ -102,7 +85,6 @@ def run_bench(
         "theta": theta,
         "count": count,
         "seed": seed,
-        # metrics
         "duration_s": dur,
         "lat_ms_mean": statistics.fmean(lat_ms) if lat_ms else 0.0,
         "lat_ms_p95": utils._pctl(lat_ms, 95.0),
@@ -112,11 +94,18 @@ def run_bench(
     }
 
 
-# ---------------- driver ----------------
+def _open_per_request_writer(path: str) -> tuple[csv.writer, Any]:
+    """Append mode; write header if file is empty/nonexistent."""
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    file_exists = os.path.exists(path) and os.path.getsize(path) > 0
+    f = open(path, "a", newline="", encoding="utf-8")
+    w = csv.writer(f)
+    if not file_exists:
+        w.writerow(["idx", "policy", "hit", "lat_ms"])
+    return w, f
 
 
 def main(argv: list[str]) -> None:
-    # Defaults
     defaults = {
         "policy": "LRU",
         "maxsize": 1000,
@@ -129,13 +118,13 @@ def main(argv: list[str]) -> None:
         "count": 10000,
         "seed": 0,
         "csv_out": None,
+        "per_request_out": None,  # NEW
         "print": 0,
     }
     csv_prefix = "./benches/results/raw/eviction_bench/"
     flags = parse_flags(argv)
     cfg = {**defaults, **flags}
 
-    # sweep keys support comma-separated values for multiple runs
     sweep_keys = [
         "policy",
         "maxsize",
@@ -150,26 +139,33 @@ def main(argv: list[str]) -> None:
     ]
     sweep = {k: utils._as_list(cfg.get(k)) for k in sweep_keys}
 
+    per_writer = None
+    per_file = None
+    if cfg.get("per_request_out"):
+        per_path = cfg["per_request_out"]
+        # keep path as provided; create dirs if needed
+        per_writer, per_file = _open_per_request_writer(per_path)
+
     results: list[dict[str, Any]] = []
-    for params in utils._cartesian(sweep):
-        # coerce numerics if they came in as strings
-        for k, v in list(params.items()):
-            if isinstance(v, str):
-                try:
-                    params[k] = float(v) if "." in v else int(v)
-                except Exception:
-                    pass
-        res = run_bench(**params)
-        results.append(res)
+    try:
+        for params in utils._cartesian(sweep):
+            for k, v in list(params.items()):
+                if isinstance(v, str):
+                    try:
+                        params[k] = float(v) if "." in v else int(v)
+                    except Exception:
+                        pass
+            res = run_bench(**params, per_writer=per_writer)
+            results.append(res)
+            if int(cfg.get("print", 0)) == 1:
+                print(json.dumps(res, indent=2))
+    finally:
+        if per_file is not None:
+            per_file.close()
 
-        if int(cfg.get("print", 0)) == 1:  # <-- per-run print
-            print(json.dumps(res, indent=2))
-
-    # optional CSV write
     if cfg.get("csv_out"):
-        write_dicts_to_csv(results, csv_prefix + cfg["csv_out"])
-
-    # stdout for quick inspection
+        out_path = csv_prefix + cfg["csv_out"]
+        write_dicts_to_csv(results, out_path)
 
 
 if __name__ == "__main__":

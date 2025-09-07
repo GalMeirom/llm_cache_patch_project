@@ -28,8 +28,8 @@ def _build_prompts(
     lfn = long_sentences_factory(seed=seed, sentences_range=(2, 5), words_range=(6, 16))
 
     if bench_type == "short":
-        keys = uniform_stream(
-            total_keys=total_keys, unique_ratio=unique_ratio, count=count, seed=seed
+        keys = zipf_stream(
+            total_keys=total_keys, unique_ratio=unique_ratio, count=count, seed=seed, theta=1.2
         )
         return (sfn(k) for k in keys)
 
